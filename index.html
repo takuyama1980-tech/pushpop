@@ -3,212 +3,149 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PushPop Game</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#38bdf8">
+  <title>Push Pop Game</title>
   <style>
     body {
-      margin: 0;
       font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #a78bfa, #38bdf8);
-      color: white;
-    }
-    header, footer {
-      margin: 10px;
       text-align: center;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 20px;
     }
-    #board {
+    h1 {
+      margin-bottom: 10px;
+    }
+    #controls {
+      margin: 15px 0;
+    }
+    #game {
       display: grid;
-      gap: 8px;
-      margin: 20px;
-    }
-    .bubble {
-      background: rgba(255,255,255,0.35);
-      border: 2px solid rgba(255,255,255,0.5);
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      display: flex;
-      align-items: center;
+      grid-template-columns: repeat(5, 60px);
+      gap: 10px;
       justify-content: center;
+    }
+    .pop-button {
+      width: 60px;
+      height: 60px;
       cursor: pointer;
-      transition: transform 0.15s ease, background 0.15s ease;
+      border: 2px solid #444;
+      background: lightblue;
+      transition: 0.2s;
     }
-    .bubble.popped {
-      background: rgba(255,255,255,0.18);
-      transform: scale(0.9);
+    .circle { border-radius: 50%; }
+    .square { border-radius: 8px; }
+    .star {
+      clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 
+                         68% 57%, 79% 91%, 50% 70%, 
+                         21% 91%, 32% 57%, 2% 35%, 39% 35%);
     }
-    button, select {
-      margin: 5px;
-      padding: 6px 12px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
+    .heart {
+      clip-path: polygon(50% 80%, 20% 50%, 20% 20%, 40% 20%, 
+                         50% 35%, 60% 20%, 80% 20%, 80% 50%);
     }
-    button:hover {
-      opacity: 0.8;
-    }
-    progress {
-      width: 100%;
-    }
-    .confetti {
-      position: absolute;
-      width: 6px;
-      height: 10px;
-      opacity: 0.8;
-      animation: fall 2s linear forwards;
-    }
-    @keyframes fall {
-      to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-    }
+    .animal { background-image: url('https://twemoji.maxcdn.com/v/latest/svg/1f436.svg'); background-size: cover; }
+    .fruit  { background-image: url('https://twemoji.maxcdn.com/v/latest/svg/1f34e.svg'); background-size: cover; }
   </style>
 </head>
 <body>
-  <header>
-    <div id="stats">Moves: 0 | 0/0</div>
-    <progress id="progress" value="0" max="1"></progress>
-    <div id="bestTime"></div>
-  </header>
+  <h1>Push Pop Game 🍎🐶</h1>
 
-  <main>
-    <div id="board"></div>
-  </main>
-
-  <footer>
-    <label>Size:
-      <select id="sizeSelect">
-        <option value="4">4x4</option>
-        <option value="6">6x6</option>
-        <option value="8" selected>8x8</option>
-        <option value="10">10x10</option>
-        <option value="12">12x12</option>
+  <div id="controls">
+    <label>形:
+      <select id="shapeSelect">
+        <option value="circle">丸</option>
+        <option value="square">四角</option>
+        <option value="star">星</option>
+        <option value="heart">ハート</option>
+        <option value="animal">動物</option>
+        <option value="fruit">フルーツ</option>
+        <option value="random">ランダム</option>
       </select>
     </label>
-    <button onclick="resetBoard()">Reset</button>
-    <button onclick="shuffleBoard()">Shuffle</button>
-    <button onclick="popAll()">Pop All</button>
-  </footer>
+    <label>色（押す前）:<input type="color" id="beforeColor" value="#add8e6"></label>
+    <label>色（押した後）:<input type="color" id="afterColor" value="#ff9999"></label>
+    <button onclick="setRandomColors()">ランダム色</button>
+    <br><br>
+    <label>音:
+      <select id="soundSelect">
+        <option value="random">ランダム</option>
+        <option value="pop1.mp3">音1</option>
+        <option value="pop2.mp3">音2</option>
+        <option value="pop3.mp3">音3</option>
+        <option value="pop4.mp3">音4</option>
+        <option value="pop5.mp3">音5</option>
+        <option value="pop6.mp3">音6</option>
+        <option value="pop7.mp3">音7</option>
+        <option value="pop8.mp3">音8</option>
+        <option value="pop9.mp3">音9</option>
+        <option value="pop10.mp3">音10</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="game"></div>
 
   <script>
-    let size = 8;
-    let bubbles = [];
-    let moves = 0;
-    let popped = 0;
-    let startTime = null;
-    let bestTime = null;
+    const game = document.getElementById("game");
+    const beforeColorInput = document.getElementById("beforeColor");
+    const afterColorInput = document.getElementById("afterColor");
+    const shapeSelect = document.getElementById("shapeSelect");
+    const soundSelect = document.getElementById("soundSelect");
 
-    const boardEl = document.getElementById('board');
-    const statsEl = document.getElementById('stats');
-    const progressEl = document.getElementById('progress');
-    const bestTimeEl = document.getElementById('bestTime');
+    const shapes = ["circle", "square", "star", "heart", "animal", "fruit"];
+    const sounds = ["pop1.mp3","pop2.mp3","pop3.mp3","pop4.mp3","pop5.mp3",
+                    "pop6.mp3","pop7.mp3","pop8.mp3","pop9.mp3","pop10.mp3"];
 
-    function initBoard() {
-      boardEl.style.gridTemplateColumns = `repeat(${size}, 50px)`;
-      boardEl.style.gridTemplateRows = `repeat(${size}, 50px)`;
-      bubbles = [];
-      boardEl.innerHTML = '';
-      for (let i = 0; i < size*size; i++) {
-        const div = document.createElement('div');
-        div.className = 'bubble';
-        div.dataset.index = i;
-        div.onclick = () => toggleBubble(i);
-        boardEl.appendChild(div);
-        bubbles.push({popped:false, el:div});
+    function setRandomColors() {
+      beforeColorInput.value = getRandomColor();
+      afterColorInput.value = getRandomColor();
+    }
+
+    function getRandomColor() {
+      return "#" + Math.floor(Math.random()*16777215).toString(16);
+    }
+
+    function playSound() {
+      let selected = soundSelect.value;
+      if (selected === "random") {
+        selected = sounds[Math.floor(Math.random()*sounds.length)];
       }
-      moves = 0;
-      popped = 0;
-      startTime = null;
-      updateUI();
+      const audio = new Audio(selected);
+      audio.play();
     }
 
-    function toggleBubble(i) {
-      if (!startTime) startTime = Date.now();
-      const b = bubbles[i];
-      b.popped = !b.popped;
-      b.el.classList.toggle('popped');
-      popped += b.popped ? 1 : -1;
-      moves++;
-      playPop();
-      updateUI();
-      if (popped === size*size) celebrate();
-    }
-
-    function resetBoard() { initBoard(); }
-    function shuffleBoard() {
-      bubbles.forEach(b => {
-        const state = Math.random() < 0.5;
-        b.popped = state;
-        b.el.classList.toggle('popped', state);
-      });
-      moves = 0;
-      popped = bubbles.filter(b=>b.popped).length;
-      startTime = Date.now();
-      updateUI();
-    }
-    function popAll() {
-      bubbles.forEach(b => { b.popped = true; b.el.classList.add('popped'); });
-      popped = size*size;
-      moves++;
-      updateUI();
-      celebrate();
-    }
-
-    function updateUI() {
-      statsEl.textContent = `Moves: ${moves} | ${popped}/${size*size}`;
-      progressEl.value = popped/(size*size);
-      if (bestTime) bestTimeEl.textContent = `Best: ${bestTime.toFixed(2)}s`;
-    }
-
-    function celebrate() {
-      if (startTime) {
-        const elapsed = (Date.now() - startTime)/1000;
-        if (!bestTime || elapsed < bestTime) bestTime = elapsed;
-        bestTimeEl.textContent = `Best: ${bestTime.toFixed(2)}s`;
+    function createButton(shape) {
+      const btn = document.createElement("div");
+      let currentShape = shape;
+      if (shape === "random") {
+        currentShape = shapes[Math.floor(Math.random()*shapes.length)];
       }
-      for (let i=0; i<50; i++) spawnConfetti();
-    }
+      btn.className = "pop-button " + currentShape;
+      btn.style.backgroundColor = beforeColorInput.value;
 
-    function spawnConfetti() {
-      const div = document.createElement('div');
-      div.className = 'confetti';
-      div.style.left = Math.random()*100 + 'vw';
-      div.style.top = '-10px';
-      div.style.backgroundColor = `hsl(${Math.random()*360},100%,50%)`;
-      document.body.appendChild(div);
-      setTimeout(()=>div.remove(),2000);
-    }
-
-    function playPop() {
-      const ctx = new (window.AudioContext||window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.value = 300;
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime+0.1);
-    }
-
-    document.getElementById('sizeSelect').onchange = (e)=>{
-      size = parseInt(e.target.value);
-      initBoard();
-    };
-
-    // PWA Service Worker 登録
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js');
+      btn.addEventListener("click", () => {
+        btn.style.backgroundColor = 
+          btn.style.backgroundColor === beforeColorInput.value
+            ? afterColorInput.value
+            : beforeColorInput.value;
+        playSound();
       });
+      return btn;
     }
 
-    initBoard();
+    function initGame() {
+      game.innerHTML = "";
+      for (let i=0; i<25; i++) {
+        const btn = createButton(shapeSelect.value);
+        game.appendChild(btn);
+      }
+    }
+
+    shapeSelect.addEventListener("change", initGame);
+    beforeColorInput.addEventListener("input", initGame);
+    afterColorInput.addEventListener("input", initGame);
+
+    initGame();
   </script>
 </body>
 </html>
