@@ -1,151 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Push Pop Game</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      background: #f9f9f9;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 {
-      margin-bottom: 10px;
-    }
-    #controls {
-      margin: 15px 0;
-    }
-    #game {
-      display: grid;
-      grid-template-columns: repeat(5, 60px);
-      gap: 10px;
-      justify-content: center;
-    }
-    .pop-button {
-      width: 60px;
-      height: 60px;
-      cursor: pointer;
-      border: 2px solid #444;
-      background: lightblue;
-      transition: 0.2s;
-    }
-    .circle { border-radius: 50%; }
-    .square { border-radius: 8px; }
-    .star {
-      clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 
-                         68% 57%, 79% 91%, 50% 70%, 
-                         21% 91%, 32% 57%, 2% 35%, 39% 35%);
-    }
-    .heart {
-      clip-path: polygon(50% 80%, 20% 50%, 20% 20%, 40% 20%, 
-                         50% 35%, 60% 20%, 80% 20%, 80% 50%);
-    }
-    .animal { background-image: url('https://twemoji.maxcdn.com/v/latest/svg/1f436.svg'); background-size: cover; }
-    .fruit  { background-image: url('https://twemoji.maxcdn.com/v/latest/svg/1f34e.svg'); background-size: cover; }
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Push Pop">
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon-180.png">
+  <link rel="icon" href="icon-192.png">
+  <title>Push Pop</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Push Pop Game 🍎🐶</h1>
+  <canvas id="confetti"></canvas>
+  <div class="app">
+    <header class="header">
+      <div class="title">Push Pop</div>
+      <div class="controls">
+        <label>サイズ:
+          <input id="size" class="slider" type="range" min="3" max="10" value="6">
+        </label>
+        <label>効果音:
+          <select id="sound" class="select">
+            <option value="beep">Beep</option>
+            <option value="pop">Pop</option>
+            <option value="click">Click</option>
+          </select>
+        </label>
+        <button id="audioToggle" class="secondary">音: ON</button>
+        <button id="hapticToggle" class="secondary">ハプティック: ON</button>
+        <button id="recolor">色をランダム</button>
+        <button id="shuffle">スキン切替 & リスタート</button>
+      </div>
+    </header>
 
-  <div id="controls">
-    <label>形:
-      <select id="shapeSelect">
-        <option value="circle">丸</option>
-        <option value="square">四角</option>
-        <option value="star">星</option>
-        <option value="heart">ハート</option>
-        <option value="animal">動物</option>
-        <option value="fruit">フルーツ</option>
-        <option value="random">ランダム</option>
-      </select>
-    </label>
-    <label>色（押す前）:<input type="color" id="beforeColor" value="#add8e6"></label>
-    <label>色（押した後）:<input type="color" id="afterColor" value="#ff9999"></label>
-    <button onclick="setRandomColors()">ランダム色</button>
-    <br><br>
-    <label>音:
-      <select id="soundSelect">
-        <option value="random">ランダム</option>
-        <option value="pop1.mp3">音1</option>
-        <option value="pop2.mp3">音2</option>
-        <option value="pop3.mp3">音3</option>
-        <option value="pop4.mp3">音4</option>
-        <option value="pop5.mp3">音5</option>
-        <option value="pop6.mp3">音6</option>
-        <option value="pop7.mp3">音7</option>
-        <option value="pop8.mp3">音8</option>
-        <option value="pop9.mp3">音9</option>
-        <option value="pop10.mp3">音10</option>
-      </select>
-    </label>
+    <main class="main">
+      <div class="board-wrap">
+        <div class="board"></div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      ホーム画面に追加してPWAとしてお楽しみください。オフライン対応。
+    </footer>
   </div>
 
-  <div id="game"></div>
-
-  <script>
-    const game = document.getElementById("game");
-    const beforeColorInput = document.getElementById("beforeColor");
-    const afterColorInput = document.getElementById("afterColor");
-    const shapeSelect = document.getElementById("shapeSelect");
-    const soundSelect = document.getElementById("soundSelect");
-
-    const shapes = ["circle", "square", "star", "heart", "animal", "fruit"];
-    const sounds = ["pop1.mp3","pop2.mp3","pop3.mp3","pop4.mp3","pop5.mp3",
-                    "pop6.mp3","pop7.mp3","pop8.mp3","pop9.mp3","pop10.mp3"];
-
-    function setRandomColors() {
-      beforeColorInput.value = getRandomColor();
-      afterColorInput.value = getRandomColor();
-    }
-
-    function getRandomColor() {
-      return "#" + Math.floor(Math.random()*16777215).toString(16);
-    }
-
-    function playSound() {
-      let selected = soundSelect.value;
-      if (selected === "random") {
-        selected = sounds[Math.floor(Math.random()*sounds.length)];
-      }
-      const audio = new Audio(selected);
-      audio.play();
-    }
-
-    function createButton(shape) {
-      const btn = document.createElement("div");
-      let currentShape = shape;
-      if (shape === "random") {
-        currentShape = shapes[Math.floor(Math.random()*shapes.length)];
-      }
-      btn.className = "pop-button " + currentShape;
-      btn.style.backgroundColor = beforeColorInput.value;
-
-      btn.addEventListener("click", () => {
-        btn.style.backgroundColor = 
-          btn.style.backgroundColor === beforeColorInput.value
-            ? afterColorInput.value
-            : beforeColorInput.value;
-        playSound();
-      });
-      return btn;
-    }
-
-    function initGame() {
-      game.innerHTML = "";
-      for (let i=0; i<25; i++) {
-        const btn = createButton(shapeSelect.value);
-        game.appendChild(btn);
-      }
-    }
-
-    shapeSelect.addEventListener("change", initGame);
-    beforeColorInput.addEventListener("input", initGame);
-    afterColorInput.addEventListener("input", initGame);
-
-    initGame();
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
